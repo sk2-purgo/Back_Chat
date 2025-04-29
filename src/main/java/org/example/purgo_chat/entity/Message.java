@@ -21,8 +21,14 @@ public class Message {
     @JoinColumn(name = "chatroom_id")
     private ChatRoom chatRoom;
 
+    @Column(name = "sender_name")
     private String senderName;
+
+    @Column(name = "receiver_name")
     private String receiverName;
+
     private String content;
-    private LocalDateTime createdAt;
+
+    @Column(name = "created_at")
+    private LocalDateTime createdAt = LocalDateTime.now();
 }
