@@ -13,6 +13,42 @@
             border-radius: 5px;
             padding: 10px;
             margin-bottom: 10px;
+            background-color: #f8f9fa;
+        }
+        .message {
+            margin-bottom: 15px;
+            clear: both;
+        }
+        .message-sent {
+            float: right;
+            text-align: right;
+            max-width: 80%;
+            background-color: #dcf8c6;
+            padding: 10px;
+            border-radius: 10px;
+            word-wrap: break-word;
+        }
+        .message-received {
+            float: left;
+            text-align: left;
+            max-width: 80%;
+            background-color: #fff;
+            padding: 10px;
+            border-radius: 10px;
+            word-wrap: break-word;
+        }
+        .message-content {
+            margin-bottom: 5px;
+        }
+        .message-time {
+            font-size: 12px;
+            color: #777;
+        }
+        .clear {
+            clear: both;
+        }
+        .alert {
+            margin-bottom: 10px;
         }
     </style>
 </head>
@@ -136,37 +172,63 @@
         document.getElementById('login-container').style.display = 'block';
         document.getElementById('chat-container').style.display = 'none';
         document.getElementById('messages').innerHTML = '';
+        document.getElementById('username').value = '';
     }
 
     function displayMessage(message) {
         const messagesContainer = document.getElementById('messages');
         const messageDiv = document.createElement('div');
 
+        // 입장/퇴장 메시지 처리
         if (message.type === 'ENTER' || message.type === 'LEAVE') {
             messageDiv.className = 'alert alert-secondary text-center';
             messageDiv.textContent = message.content;
-        } else {
+            messagesContainer.appendChild(messageDiv);
+        }
+        // 일반 채팅 메시지 처리
+        else {
+            // 내가 보낸 메시지인지 확인
             const isMine = message.sender === username;
-            messageDiv.className = `message ${isMine ? 'message-sent' : 'message-received'}`;
 
+            // 메시지 컨테이너 생성
+            const chatMessageDiv = document.createElement('div');
+            chatMessageDiv.className = 'message';
+
+            // 보낸 사람 표시 (상대방 메시지인 경우에만)
+            if (!isMine) {
+                const senderDiv = document.createElement('div');
+                senderDiv.className = 'message-sender';
+                senderDiv.textContent = message.sender;
+                chatMessageDiv.appendChild(senderDiv);
+            }
+
+            // 메시지 내용과 시간을 담는 div
+            const bubbleDiv = document.createElement('div');
+            bubbleDiv.className = isMine ? 'message-sent' : 'message-received';
+
+            // 메시지 내용
             const contentDiv = document.createElement('div');
             contentDiv.className = 'message-content';
             contentDiv.textContent = message.content;
+            bubbleDiv.appendChild(contentDiv);
 
+            // 시간 표시
             const timeDiv = document.createElement('div');
             timeDiv.className = 'message-time';
-            timeDiv.textContent = message.time;
+            timeDiv.textContent = message.time.split(' ')[1]; // 시간만 표시
+            bubbleDiv.appendChild(timeDiv);
 
-            messageDiv.appendChild(contentDiv);
-            messageDiv.appendChild(timeDiv);
+            chatMessageDiv.appendChild(bubbleDiv);
+            messagesContainer.appendChild(chatMessageDiv);
+
+            // 줄바꿈을 위한 clear div
+            const clearDiv = document.createElement('div');
+            clearDiv.className = 'clear';
+            messagesContainer.appendChild(clearDiv);
         }
 
-        messagesContainer.appendChild(messageDiv);
+        // 스크롤을 항상 맨 아래로
         messagesContainer.scrollTop = messagesContainer.scrollHeight;
-
-        const clearDiv = document.createElement('div');
-        clearDiv.className = 'clear';
-        messagesContainer.appendChild(clearDiv);
     }
 </script>
 </body>

@@ -7,7 +7,4 @@ import java.util.List;
 
 public interface MessageRepository extends JpaRepository<Message, Integer> {
     List<Message> findByChatRoomIdOrderByCreatedAtAsc(Integer chatRoomId);
-
-    // 추가
-    void deleteAllByChatRoomId(Integer chatRoomId);
 }

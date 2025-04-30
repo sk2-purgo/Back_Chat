@@ -49,7 +49,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
                 handleTalkMessage(chatMessage);
                 break;
             case LEAVE:
-                handleLeaveMessage(chatMessage.getSender());
+                handleLeaveMessage(chatMessage);
                 break;
         }
     }
@@ -57,13 +57,21 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
     private void handleEnterMessage(WebSocketSession session, ChatMessageDto chatMessage) throws IOException {
         String senderName = chatMessage.getSender();
 
+        // 고정 채팅방 가져오기
         ChatRoom chatRoom = chatService.getFixedChatRoom();
+
+        // 사용자 입장 처리 (닉네임 저장)
+        chatService.handleUserEnter(senderName);
+
+        // 세션 저장
         userSessions.put(senderName, session);
 
+        // 메시지 설정
         chatMessage.setRoomId(chatRoom.getId().toString());
         chatMessage.setTime(getCurrentTime());
         chatMessage.setContent(senderName + "님이 입장했습니다.");
 
+        // 메시지 브로드캐스트
         broadcastMessage(chatMessage);
     }
 
@@ -73,43 +81,52 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
 
         ChatRoom chatRoom = chatService.getFixedChatRoom();
 
+        // 비속어 필터링
         FilterResponse filterResponse = badwordFilterService.filterMessage(content, chatRoom, senderName);
         String filteredContent = filterResponse.getRewrittenText();
 
+        // 메시지 저장 - 송신자와 수신자 정보가 적절히 설정됨
         chatService.saveMessage(chatRoom, senderName, filteredContent);
 
+        // 메시지 설정
         chatMessage.setContent(filteredContent);
         chatMessage.setTime(getCurrentTime());
 
+        // 채팅방 ID 설정 (고정 채팅방이므로 항상 동일)
+        chatMessage.setRoomId(chatRoom.getId().toString());
+
+        // 메시지 브로드캐스트
         broadcastMessage(chatMessage);
     }
 
-    private void handleLeaveMessage(String senderName) throws IOException {
+    private void handleLeaveMessage(ChatMessageDto chatMessage) throws IOException {
+        String senderName = chatMessage.getSender();
+
+        // 세션 제거 및 닫기
         WebSocketSession session = userSessions.remove(senderName);
-        if (session != null) {
+        if (session != null && session.isOpen()) {
             session.close();
         }
 
+        // 채팅방 가져오기
         ChatRoom chatRoom = chatService.getFixedChatRoom();
-        chatService.incrementLeaveCount(chatRoom);
 
-        ChatMessageDto leaveMessage = new ChatMessageDto();
-        leaveMessage.setType(ChatMessageDto.MessageType.LEAVE);
-        leaveMessage.setSender(senderName);
-        leaveMessage.setTime(getCurrentTime());
-        leaveMessage.setContent(senderName + "님이 퇴장했습니다.");
+        // 사용자 퇴장 처리
+        chatService.handleUserLeave(chatRoom, senderName);
 
-        broadcastMessage(leaveMessage);
+        // 메시지 설정
+        chatMessage.setTime(getCurrentTime());
+        chatMessage.setContent(senderName + "님이 퇴장했습니다.");
 
-        if (chatRoom.getLeaveCount() >= 2) {
-            chatService.clearChatRoom(chatRoom);
-        }
+        // 메시지 브로드캐스트
+        broadcastMessage(chatMessage);
     }
 
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
         log.info("웹소켓 연결 종료: {}, 상태: {}", session.getId(), status);
 
+        // 연결이 끊긴 사용자 찾기
         String disconnectedUser = null;
         for (Map.Entry<String, WebSocketSession> entry : userSessions.entrySet()) {
             if (entry.getValue().getId().equals(session.getId())) {
@@ -118,9 +135,13 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
             }
         }
 
+        // 퇴장 처리
         if (disconnectedUser != null) {
             try {
-                handleLeaveMessage(disconnectedUser);
+                ChatMessageDto leaveMessage = new ChatMessageDto();
+                leaveMessage.setType(ChatMessageDto.MessageType.LEAVE);
+                leaveMessage.setSender(disconnectedUser);
+                handleLeaveMessage(leaveMessage);
             } catch (IOException e) {
                 log.error("afterConnectionClosed 오류", e);
             }
@@ -131,6 +152,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
         String messageJson = objectMapper.writeValueAsString(chatMessage);
         TextMessage textMessage = new TextMessage(messageJson);
 
+        // 모든 연결된 세션에 메시지 전송
         for (WebSocketSession session : userSessions.values()) {
             if (session.isOpen()) {
                 session.sendMessage(textMessage);
