@@ -83,7 +83,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
 
         // 비속어 필터링
         FilterResponse filterResponse = badwordFilterService.filterMessage(content, chatRoom, senderName);
-        String filteredContent = filterResponse.getRewrittenText();
+        String filteredContent = filterResponse.getDisplayText();   // ✅ 표시용 문장
 
         // 메시지 저장 - 송신자와 수신자 정보가 적절히 설정됨
         chatService.saveMessage(chatRoom, senderName, filteredContent);

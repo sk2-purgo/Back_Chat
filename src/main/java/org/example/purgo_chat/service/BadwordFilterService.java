@@ -4,7 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.purgo_chat.dto.FilterResponse;
 import org.example.purgo_chat.entity.ChatRoom;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
@@ -18,10 +18,7 @@ import java.util.Map;
 public class BadwordFilterService {
 
     private final ChatService chatService;
-    private final RestTemplate purgoRestTemplate;
-
-    @Value("${proxy.server.url}")
-    private String gatewayUrl;
+    private final @Qualifier("purgoRestTemplate") RestTemplate purgoRestTemplate;
 
     public FilterResponse filterMessage(String text, ChatRoom chatRoom, String sender) {
         try {
@@ -34,28 +31,33 @@ public class BadwordFilterService {
             headers.setContentType(MediaType.APPLICATION_JSON);
             HttpEntity<Map<String, String>> entity = new HttpEntity<>(body, headers);
 
-            ResponseEntity<Map> response = purgoRestTemplate.postForEntity(gatewayUrl, entity, Map.class);
+            // rootUri 가 세팅돼 있으므로 상대 경로만
+            ResponseEntity<Map> response =
+                    purgoRestTemplate.postForEntity("/proxy/analyze", entity, Map.class);
 
             if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
                 Map<String, Object> result = response.getBody();
                 log.info("📦 FastAPI 응답 전체: {}", result);
 
                 FilterResponse filterResponse = FilterResponse.fromApiResponse(result);
+                String finalText = filterResponse.getDisplayText();
                 log.info("욕설 여부: {}", filterResponse.isAbusive());
-                log.info("대체 문장: {}", filterResponse.getRewrittenText());
+                log.info("최종 문장: {}", finalText);
 
                 if (filterResponse.isAbusive()) {
                     chatService.incrementBadwordCount(chatRoom);
                 }
 
-                return filterResponse;
+                return filterResponse;          // ✅ 그대로 반환
             }
         } catch (Exception e) {
             log.error("❌ 욕설 분석 실패: {}", e.getMessage(), e);
         }
 
+        // FastAPI 호출 실패 시 원문 그대로
         return FilterResponse.builder()
                 .isAbusive(false)
+                .originalText(text)
                 .rewrittenText(text)
                 .build();
     }
