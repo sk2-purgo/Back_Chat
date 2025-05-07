@@ -32,9 +32,4 @@ public class WebSocketConfig implements WebSocketConfigurer {
         container.setMaxBinaryMessageBufferSize(8192);
         return container;
     }
-
-    @Bean
-    public RestTemplate restTemplate() {
-        return new RestTemplate();
-    }
 }
