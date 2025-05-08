@@ -22,7 +22,7 @@ public class BadwordFilterService {
 
     public FilterResponse filterMessage(String text, ChatRoom chatRoom, String sender) {
         try {
-            log.info("📤 FastAPI로 전송할 텍스트 (채팅): {}", text);
+            log.info("FastAPI로 전송할 텍스트 (채팅): {}", text);
 
             Map<String, String> body = new HashMap<>();
             body.put("text", text);
@@ -48,7 +48,7 @@ public class BadwordFilterService {
                     chatService.incrementBadwordCount(chatRoom);
                 }
 
-                return filterResponse;          // ✅ 그대로 반환
+                return filterResponse;          // 그대로 반환
             }
         } catch (Exception e) {
             log.error("❌ 욕설 분석 실패: {}", e.getMessage(), e);
