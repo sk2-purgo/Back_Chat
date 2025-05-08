@@ -6,7 +6,6 @@ import org.example.purgo_chat.service.ChatService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-
 @RestController
 @RequestMapping("/api/chat")
 @RequiredArgsConstructor
