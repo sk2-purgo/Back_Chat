@@ -15,6 +15,7 @@ import org.springframework.web.socket.handler.TextWebSocketHandler;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -56,23 +57,37 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
 
     private void handleEnterMessage(WebSocketSession session, ChatMessageDto chatMessage) throws IOException {
         String senderName = chatMessage.getSender();
-
-        // 고정 채팅방 가져오기
         ChatRoom chatRoom = chatService.getFixedChatRoom();
 
-        // 사용자 입장 처리 (닉네임 저장)
-        chatService.handleUserEnter(senderName);
+        try {
+            // 사용자 입장 처리 (예외 발생 가능)
+            chatService.handleUserEnter(senderName);
+            userSessions.put(senderName, session);
 
-        // 세션 저장
-        userSessions.put(senderName, session);
+            // ✅ 참여자 목록 전송
+            List<String> participants = chatService.getCurrentParticipants(chatRoom);
+            ChatMessageDto participantMessage = ChatMessageDto.builder()
+                    .type(ChatMessageDto.MessageType.PARTICIPANTS)
+                    .participants(participants)
+                    .build();
+            session.sendMessage(new TextMessage(objectMapper.writeValueAsString(participantMessage)));
 
-        // 메시지 설정
-        chatMessage.setRoomId(chatRoom.getId().toString());
-        chatMessage.setTime(getCurrentTime());
-        chatMessage.setContent(senderName + "님이 입장했습니다.");
+            // ✅ 입장 메시지 브로드캐스트
+            chatMessage.setRoomId(chatRoom.getId().toString());
+            chatMessage.setTime(getCurrentTime());
+            chatMessage.setContent(senderName + "님이 입장했습니다.");
+            broadcastMessage(chatMessage);
 
-        // 메시지 브로드캐스트
-        broadcastMessage(chatMessage);
+        } catch (IllegalStateException e) {
+            // ✅ ERROR 메시지 전송
+            ChatMessageDto errorMessage = ChatMessageDto.builder()
+                    .type(ChatMessageDto.MessageType.ERROR)
+                    .content(e.getMessage())
+                    .build();
+            session.sendMessage(new TextMessage(objectMapper.writeValueAsString(errorMessage)));
+            log.warn("입장 거부: {} (사유: {})", senderName, e.getMessage());
+            session.close();
+        }
     }
 
     private void handleTalkMessage(ChatMessageDto chatMessage) throws IOException {
@@ -81,44 +96,36 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
 
         ChatRoom chatRoom = chatService.getFixedChatRoom();
 
-        // 비속어 필터링
+        // 욕설 필터링
         FilterResponse filterResponse = badwordFilterService.filterMessage(content, chatRoom, senderName);
-        String filteredContent = filterResponse.getDisplayText();   // ✅ 표시용 문장
+        String filteredContent = filterResponse.getDisplayText();
 
-        // 메시지 저장 - 송신자와 수신자 정보가 적절히 설정됨
+        // 메시지 저장
         chatService.saveMessage(chatRoom, senderName, filteredContent);
 
         // 메시지 설정
         chatMessage.setContent(filteredContent);
         chatMessage.setTime(getCurrentTime());
-
-        // 채팅방 ID 설정 (고정 채팅방이므로 항상 동일)
         chatMessage.setRoomId(chatRoom.getId().toString());
 
-        // 메시지 브로드캐스트
         broadcastMessage(chatMessage);
     }
 
     private void handleLeaveMessage(ChatMessageDto chatMessage) throws IOException {
         String senderName = chatMessage.getSender();
 
-        // 세션 제거 및 닫기
+        // 세션 제거 및 종료
         WebSocketSession session = userSessions.remove(senderName);
         if (session != null && session.isOpen()) {
             session.close();
         }
 
-        // 채팅방 가져오기
         ChatRoom chatRoom = chatService.getFixedChatRoom();
-
-        // 사용자 퇴장 처리
         chatService.handleUserLeave(chatRoom, senderName);
 
-        // 메시지 설정
+        // 퇴장 메시지 설정
         chatMessage.setTime(getCurrentTime());
         chatMessage.setContent(senderName + "님이 퇴장했습니다.");
-
-        // 메시지 브로드캐스트
         broadcastMessage(chatMessage);
     }
 
@@ -126,7 +133,6 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
         log.info("웹소켓 연결 종료: {}, 상태: {}", session.getId(), status);
 
-        // 연결이 끊긴 사용자 찾기
         String disconnectedUser = null;
         for (Map.Entry<String, WebSocketSession> entry : userSessions.entrySet()) {
             if (entry.getValue().getId().equals(session.getId())) {
@@ -135,7 +141,6 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
             }
         }
 
-        // 퇴장 처리
         if (disconnectedUser != null) {
             try {
                 ChatMessageDto leaveMessage = new ChatMessageDto();
@@ -152,7 +157,6 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
         String messageJson = objectMapper.writeValueAsString(chatMessage);
         TextMessage textMessage = new TextMessage(messageJson);
 
-        // 모든 연결된 세션에 메시지 전송
         for (WebSocketSession session : userSessions.values()) {
             if (session.isOpen()) {
                 session.sendMessage(textMessage);
