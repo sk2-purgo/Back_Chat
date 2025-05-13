@@ -6,6 +6,7 @@ import org.example.purgo_chat.entity.Message;
 import org.example.purgo_chat.repository.ChatRoomRepository;
 import org.example.purgo_chat.repository.MessageRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.*;
@@ -95,6 +96,7 @@ public class ChatService {
     }
 
     // 욕설 카운트 증가
+    @Transactional
     public void incrementBadwordCount(ChatRoom chatRoom) {
         chatRoom.setBadwordCount(chatRoom.getBadwordCount() + 1);
         chatRoomRepository.save(chatRoom);

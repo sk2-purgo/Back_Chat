@@ -107,6 +107,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
         chatMessage.setContent(filteredContent);
         chatMessage.setTime(getCurrentTime());
         chatMessage.setRoomId(chatRoom.getId().toString());
+        chatMessage.setBadWordCount(chatRoom.getBadwordCount());
 
         broadcastMessage(chatMessage);
     }

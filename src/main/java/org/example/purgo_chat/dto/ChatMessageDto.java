@@ -20,6 +20,7 @@ public class ChatMessageDto {
     private String receiver;
     private String content;
     private String time;
+    private Integer badWordCount;
     private List <String> participants;
 
 }
