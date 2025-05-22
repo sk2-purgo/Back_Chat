@@ -20,34 +20,30 @@ public class FilterResponse {
 
     @SuppressWarnings("unchecked")
     public static FilterResponse fromApiResponse(Map<String, Object> apiResponse) {
-        boolean isAbusive   = false;
-        String  rewritten   = null;
-        String  original    = null;
+        boolean isAbusive = false;
+        String rewritten = null;
+        String original = null;
 
         if (apiResponse != null) {
-
-            /* ---- 1) 신규 스펙 : 최상위 키 ---- */
-            Object abusiveFlag = apiResponse.get("is_abusive");
-            if (abusiveFlag instanceof Boolean) {
-                isAbusive = (Boolean) abusiveFlag;
-            } else if (abusiveFlag != null) {
-                // 문자열 "1" / "0" 대응
-                isAbusive = "1".equals(abusiveFlag.toString());
-            }
-
-            original  = (String) apiResponse.get("original_text");
-            rewritten = (String) apiResponse.get("rewritten_text");
-
-            /* ---- 2) 구(舊) 스펙 : result.* & final_decision ---- */
+            // 최종 판단 기준은 final_decision
             Object finalDecision = apiResponse.get("final_decision");
-            if (finalDecision != null) {            // 1 / 0
-                isAbusive = "1".equals(finalDecision.toString());
+            if (finalDecision != null) {
+                String decisionStr = finalDecision.toString();
+                isAbusive = "1".equals(decisionStr) || "true".equalsIgnoreCase(decisionStr);
             }
 
-            Map<String, Object> resultInner = (Map<String, Object>) apiResponse.get("result");
-            if (resultInner != null) {
-                if (original  == null) original  = (String) resultInner.get("original_text");
-                if (rewritten == null) rewritten = (String) resultInner.get("rewritten_text");
+            // result 내 원문/대체문 추출
+            Object resultObj = apiResponse.get("result");
+            if (resultObj instanceof Map<?, ?> resultMap) {
+                Object originalObj = resultMap.get("original_text");
+                Object rewrittenObj = resultMap.get("rewritten_text");
+
+                if (originalObj instanceof String) {
+                    original = (String) originalObj;
+                }
+                if (rewrittenObj instanceof String) {
+                    rewritten = (String) rewrittenObj;
+                }
             }
         }
 

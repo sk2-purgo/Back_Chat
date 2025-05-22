@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.example.purgo_chat.dto.FilterResponse;
 import org.example.purgo_chat.entity.ChatRoom;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
@@ -17,6 +18,13 @@ import java.util.Map;
 @Slf4j
 public class BadwordFilterService {
 
+    @Value("${purgo.proxy.base-url}")
+    private String proxyBaseUrl;
+
+    @Value("${purgo.proxy.api-key}")
+    private String proxyApiKey;
+
+    private final ServerToProxyJwtService jwtService;
     private final ChatService chatService;
     private final @Qualifier("purgoRestTemplate") RestTemplate purgoRestTemplate;
 
@@ -27,13 +35,17 @@ public class BadwordFilterService {
             Map<String, String> body = new HashMap<>();
             body.put("text", text);
 
+            String jsonBody = jwtService.createJsonBody(body); // JSON 문자열 정렬 & 설정
+
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
-            HttpEntity<Map<String, String>> entity = new HttpEntity<>(body, headers);
+            headers.set("Authorization", "Bearer " + proxyApiKey);
+            headers.set("X-Auth-Token", jwtService.generateTokenFromJson(jsonBody));
 
-            // rootUri 가 세팅돼 있으므로 상대 경로만
+            HttpEntity<String> entity = new HttpEntity<>(jsonBody, headers);
+
             ResponseEntity<Map> response =
-                    purgoRestTemplate.postForEntity("/proxy/analyze", entity, Map.class);
+                    purgoRestTemplate.postForEntity(proxyBaseUrl, entity, Map.class);
 
             if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
                 Map<String, Object> result = response.getBody();

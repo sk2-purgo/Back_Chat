@@ -8,7 +8,6 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.http.client.ClientHttpRequestInterceptor;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.beans.factory.annotation.Qualifier;
 
 import java.nio.charset.StandardCharsets;
 
@@ -22,7 +21,7 @@ public class RestTemplateConfig {
     @Value("${purgo.proxy.api-key}")
     private String apiKey;
 
-    private final ServerToProxyJwtService jwtService;   // 👈 신규 Bean
+    private final ServerToProxyJwtService jwtService;
 
     @Bean(name = "purgoRestTemplate")
     public RestTemplate purgoRestTemplate(RestTemplateBuilder builder) {
