@@ -10,6 +10,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Service
 @RequiredArgsConstructor
@@ -40,38 +42,74 @@ public class ChatService {
         ChatRoom chatRoom = getFixedChatRoom();
 
         // 이미 참여 중이면 무시
-        if (username.equals(chatRoom.getUser1Name()) || username.equals(chatRoom.getUser2Name())) {
+        if (username.equals(chatRoom.getUser1Name()) ||
+                username.equals(chatRoom.getUser2Name()) ||
+                username.equals(chatRoom.getUser3Name()) ||
+                username.equals(chatRoom.getUser4Name()) ||
+                username.equals(chatRoom.getUser5Name()) ||
+                username.equals(chatRoom.getUser6Name()) ||
+                username.equals(chatRoom.getUser7Name()) ||
+                username.equals(chatRoom.getUser8Name())){
             return;
         }
 
+        // 빈 자리 여부 확인
         boolean isUser1Empty = chatRoom.getUser1Name() == null;
         boolean isUser2Empty = chatRoom.getUser2Name() == null;
+        boolean isUser3Empty = chatRoom.getUser3Name() == null;
+        boolean isUser4Empty = chatRoom.getUser4Name() == null;
+        boolean isUser5Empty = chatRoom.getUser5Name() == null;
+        boolean isUser6Empty = chatRoom.getUser6Name() == null;
+        boolean isUser7Empty = chatRoom.getUser7Name() == null;
+        boolean isUser8Empty = chatRoom.getUser8Name() == null;
 
         // 누군가 나갔고 빈 자리 있으면 leaveCount 감소
-        if ((isUser1Empty || isUser2Empty) && chatRoom.getLeaveCount() > 0) {
+        if ((isUser1Empty || isUser2Empty || isUser3Empty || isUser4Empty || isUser5Empty || isUser6Empty || isUser7Empty || isUser8Empty)
+                && chatRoom.getLeaveCount() > 0) {
             chatRoom.setLeaveCount(chatRoom.getLeaveCount() - 1);
-            recentlyLeft.remove(username);
+            recentlyLeft.remove(username); // 이미 있던 코드 그대로 사용
         }
 
         if (isUser1Empty) {
             chatRoom.setUser1Name(username);
         } else if (isUser2Empty) {
             chatRoom.setUser2Name(username);
+        } else if (isUser3Empty) {
+            chatRoom.setUser3Name(username);
+        } else if (isUser4Empty) {
+            chatRoom.setUser4Name(username);
+        } else if (isUser5Empty) {
+            chatRoom.setUser5Name(username);
+        } else if (isUser6Empty) {
+            chatRoom.setUser6Name(username);
+        } else if (isUser7Empty) {
+            chatRoom.setUser7Name(username);
+        } else if (isUser8Empty) {
+            chatRoom.setUser8Name(username);
         } else {
-            // 🔒 세 번째 사용자 차단
             throw new IllegalStateException("채팅방이 이미 가득 찼습니다.");
         }
 
         chatRoomRepository.save(chatRoom);
     }
 
+    private String getReceiverName(ChatRoom chatRoom, String senderName) {
+        return getCurrentParticipants(chatRoom).stream()
+                .filter(name -> !name.equals(senderName))
+                .findFirst()
+                .orElse("waiting");
+    }
+
     // 메시지 저장
     public void saveMessage(ChatRoom chatRoom, String senderName, String content) {
-        // 🔐 채팅방 참여자 확인
-        if (!senderName.equals(chatRoom.getUser1Name()) && !senderName.equals(chatRoom.getUser2Name())) {
+        List<String> participants = getCurrentParticipants(chatRoom);
+
+        // 채팅방 참여자 확인
+        if (!participants.contains(senderName)) {
             throw new IllegalArgumentException("채팅방 참여자가 아닙니다.");
         }
 
+        // 수신자는 가장 먼저 발견되는 나 외의 사용자
         String receiverName = getReceiverName(chatRoom, senderName);
 
         Message message = Message.builder()
@@ -83,16 +121,6 @@ public class ChatService {
                 .build();
 
         messageRepository.save(message);
-    }
-
-    // 수신자 결정
-    private String getReceiverName(ChatRoom chatRoom, String senderName) {
-        if (senderName.equals(chatRoom.getUser1Name())) {
-            return chatRoom.getUser2Name() != null ? chatRoom.getUser2Name() : "waiting";
-        } else if (senderName.equals(chatRoom.getUser2Name())) {
-            return chatRoom.getUser1Name() != null ? chatRoom.getUser1Name() : "waiting";
-        }
-        return "waiting";
     }
 
     // 욕설 카운트 증가
@@ -110,13 +138,32 @@ public class ChatService {
         } else if (username.equals(chatRoom.getUser2Name())) {
             recentlyLeft.put(username, "user2");
             chatRoom.setUser2Name(null);
+        } else if (username.equals(chatRoom.getUser3Name())) {
+            recentlyLeft.put(username, "user3");
+            chatRoom.setUser3Name(null);
+        } else if (username.equals(chatRoom.getUser4Name())) {
+            recentlyLeft.put(username, "user4");
+            chatRoom.setUser4Name(null);
+        } else if (username.equals(chatRoom.getUser5Name())) {
+            recentlyLeft.put(username, "user5");
+            chatRoom.setUser5Name(null);
+        } else if (username.equals(chatRoom.getUser6Name())) {
+            recentlyLeft.put(username, "user6");
+            chatRoom.setUser6Name(null);
+        } else if (username.equals(chatRoom.getUser7Name())) {
+            recentlyLeft.put(username, "user7");
+            chatRoom.setUser7Name(null);
+        } else if (username.equals(chatRoom.getUser8Name())) {
+            recentlyLeft.put(username, "user8");
+            chatRoom.setUser8Name(null);
         }
+
 
         chatRoom.setLeaveCount(chatRoom.getLeaveCount() + 1);
         chatRoomRepository.save(chatRoom);
 
         // 모두 나간 경우 초기화
-        if (chatRoom.getLeaveCount() == 2) {
+        if (chatRoom.getLeaveCount() == 8) {
             clearChatRoom(chatRoom);
             recentlyLeft.clear();
         }
@@ -126,6 +173,12 @@ public class ChatService {
     public void clearChatRoom(ChatRoom chatRoom) {
         chatRoom.setUser1Name(null);
         chatRoom.setUser2Name(null);
+        chatRoom.setUser3Name(null);
+        chatRoom.setUser4Name(null);
+        chatRoom.setUser5Name(null);
+        chatRoom.setUser6Name(null);
+        chatRoom.setUser7Name(null);
+        chatRoom.setUser8Name(null);
         chatRoom.setBadwordCount(0);
         chatRoom.setLeaveCount(0);
         chatRoomRepository.save(chatRoom);
@@ -138,9 +191,15 @@ public class ChatService {
 
     // ✅ 현재 채팅방의 참여자 목록 반환
     public List<String> getCurrentParticipants(ChatRoom chatRoom) {
-        List<String> participants = new ArrayList<>();
-        if (chatRoom.getUser1Name() != null) participants.add(chatRoom.getUser1Name());
-        if (chatRoom.getUser2Name() != null) participants.add(chatRoom.getUser2Name());
-        return participants;
+        return Stream.of(
+                chatRoom.getUser1Name(),
+                chatRoom.getUser2Name(),
+                chatRoom.getUser3Name(),
+                chatRoom.getUser4Name(),
+                chatRoom.getUser5Name(),
+                chatRoom.getUser6Name(),
+                chatRoom.getUser7Name(),
+                chatRoom.getUser8Name()
+        ).filter(Objects::nonNull).collect(Collectors.toList());
     }
 }
