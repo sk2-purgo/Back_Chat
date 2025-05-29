@@ -29,6 +29,12 @@ public class ChatService {
             ChatRoom chatRoom = ChatRoom.builder()
                     .user1Name(null)
                     .user2Name(null)
+                    .user3Name(null)
+                    .user4Name(null)
+                    .user5Name(null)
+                    .user6Name(null)
+                    .user7Name(null)
+                    .user8Name(null)
                     .badwordCount(0)
                     .leaveCount(0)
                     .build();
@@ -125,9 +131,9 @@ public class ChatService {
 
     // 욕설 카운트 증가
     @Transactional
-    public void incrementBadwordCount(ChatRoom chatRoom) {
-        chatRoom.setBadwordCount(chatRoom.getBadwordCount() + 1);
-        chatRoomRepository.save(chatRoom);
+    public ChatRoom incrementBadwordCount(ChatRoom chatRoom) {
+        chatRoomRepository.incrementBadwordCount(chatRoom.getId());
+        return chatRoomRepository.findById(chatRoom.getId()).orElseThrow();
     }
 
     // 사용자 퇴장 처리
@@ -167,6 +173,13 @@ public class ChatService {
             clearChatRoom(chatRoom);
             recentlyLeft.clear();
         }
+
+        // 8명 미만으로 들어왔을 때 채팅방 초기화
+        if (isAllUsersNull(chatRoom)) {
+            chatRoom.setBadwordCount(0);
+            chatRoom.setLeaveCount(0);
+            chatRoomRepository.save(chatRoom);
+        }
     }
 
     // 채팅방 초기화
@@ -184,10 +197,17 @@ public class ChatService {
         chatRoomRepository.save(chatRoom);
     }
 
-    // 채팅 기록 조회
-    public List<Message> getChatHistory(Integer chatRoomId) {
-        return messageRepository.findByChatRoomIdOrderByCreatedAtAsc(chatRoomId);
+    public boolean isAllUsersNull(ChatRoom chatRoom) {
+        return chatRoom.getUser1Name() == null &&
+                chatRoom.getUser2Name() == null &&
+                chatRoom.getUser3Name() == null &&
+                chatRoom.getUser4Name() == null &&
+                chatRoom.getUser5Name() == null &&
+                chatRoom.getUser6Name() == null &&
+                chatRoom.getUser7Name() == null &&
+                chatRoom.getUser8Name() == null;
     }
+
 
     // ✅ 현재 채팅방의 참여자 목록 반환
     public List<String> getCurrentParticipants(ChatRoom chatRoom) {

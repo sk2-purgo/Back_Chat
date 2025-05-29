@@ -97,8 +97,13 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
         ChatRoom chatRoom = chatService.getFixedChatRoom();
 
         // 욕설 필터링
-        FilterResponse filterResponse = badwordFilterService.filterMessage(content, chatRoom, senderName);
+        FilterResponse filterResponse = badwordFilterService.filterMessage(content);
         String filteredContent = filterResponse.getDisplayText();
+
+        // 욕설이면 카운트 증가 후 새 chatRoom 사용
+        if (filterResponse.isAbusive()) {
+            chatRoom = chatService.incrementBadwordCount(chatRoom);
+        }
 
         // 메시지 저장
         chatService.saveMessage(chatRoom, senderName, filteredContent);

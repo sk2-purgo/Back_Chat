@@ -3,7 +3,6 @@ package org.example.purgo_chat.service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.purgo_chat.dto.FilterResponse;
-import org.example.purgo_chat.entity.ChatRoom;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
@@ -25,10 +24,9 @@ public class BadwordFilterService {
     private String proxyApiKey;
 
     private final ServerToProxyJwtService jwtService;
-    private final ChatService chatService;
     private final @Qualifier("purgoRestTemplate") RestTemplate purgoRestTemplate;
 
-    public FilterResponse filterMessage(String text, ChatRoom chatRoom, String sender) {
+    public FilterResponse filterMessage(String text) {
         try {
             log.info("FastAPI로 전송할 텍스트 (채팅): {}", text);
 
@@ -56,9 +54,6 @@ public class BadwordFilterService {
                 log.info("욕설 여부: {}", filterResponse.isAbusive());
                 log.info("최종 문장: {}", finalText);
 
-                if (filterResponse.isAbusive()) {
-                    chatService.incrementBadwordCount(chatRoom);
-                }
 
                 return filterResponse;          // 그대로 반환
             }
