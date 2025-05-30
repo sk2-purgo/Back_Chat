@@ -34,7 +34,7 @@
 - gradle-8.13
 
 ## 로컬 docker 설치
-- docker run --name mysql-db -e MYSQL_ROOT_PASSWORD=YOURPASSWORD -p 3306:3306 -d mysql:8.4
+- docker run --name mysql-db -e MYSQL_ROOT_PASSWORD={YOURPASSWORD} -p 3306:3306 -d mysql:8.4
   - 쿼리 : query.sql
 
 ## 프로젝트 기간
